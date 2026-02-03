@@ -2,7 +2,7 @@
 
 template<typename Key, typename Value>
 class Node {
-    private:
+    protected:
         Key key;
         Value val;
 
