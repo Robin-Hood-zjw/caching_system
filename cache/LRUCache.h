@@ -2,6 +2,7 @@
 using namespace std;
 
 #include "CacheNode.h"
+#include "CachePolicy.h"
 
 template<typename Key, typename Value>
 class LRU_Node : public CacheNode<Key, Value> {
@@ -12,3 +13,4 @@ class LRU_Node : public CacheNode<Key, Value> {
         LRU_Node<Key key, Value val> : CacheNode<Key, Value>(key, val) {}
 };
 
+// template<typename Key, typename Value>
