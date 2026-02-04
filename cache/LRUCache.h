@@ -1,9 +1,11 @@
 #pragma once
 
-#include <mutex>
-
 #include "CacheNode.h"
 #include "CachePolicy.h"
+
+#include <mutex>
+#include <memory>
+#include <unordered_map>
 
 using namespace std;
 
@@ -14,6 +16,8 @@ class LRU_Node : public CacheNode<Key, Value> {
         shared_ptr<LRU_Node<Key, Value>> next;
 
         LRU_Node<Key key, Value val> : CacheNode<Key, Value>(key, val) {}
+
+        friend class LRU_Cache<Key, Value>;
 };
 
 template<typename Key, typename Value>
@@ -56,7 +60,17 @@ class LRU_Cache : public CachePolicy<Key, Value> {
     private:
         mutex _mutex;
         int _capacity;
-        node_ptr head;
-        node_ptr tail;
+        node_ptr dummyHead;
+        node_ptr dummyTail;
         node_map nodeRecords;
+
+        void initializeList() {
+            
+        }
 };
+
+// template<typename Key, typename Value>
+// class LRU_Cache_K : public CachePolicy<Key, Value> {};
+
+// template<typename Key, typename Value>
+// class LRU_Cache_Hash : public CachePolicy<Key, Value> {};
