@@ -27,7 +27,9 @@ class LRU_Cache : public CachePolicy<Key, Value> {
         using node_ptr = shared_ptr<LRU_node_type>;
         using node_map = unordered_map<Key, node_ptr>;
 
-        LRU_Cache(int capacity): _capacity(capacity) {}
+        LRU_Cache(int capacity): _capacity(capacity) {
+            initializeList();
+        }
         ~LRU_Cache() override = default;
 
         Value get(Key key) override {
@@ -53,8 +55,11 @@ class LRU_Cache : public CachePolicy<Key, Value> {
             lock_guard<mutex> lock(_mutex);
 
             if (nodeRecords.count(key)) {
+                updateExistingNode(nodeRecords[key], val);
                 return;
             }
+
+            addNewNode(key, val);
         }
 
     private:
@@ -65,7 +70,54 @@ class LRU_Cache : public CachePolicy<Key, Value> {
         node_map nodeRecords;
 
         void initializeList() {
-            
+            dummyHead = make_shared<LRU_node_type>(Key(), Value());
+            dummyTail = make_shared<LRU_node_type>(Key(), Value());
+            dummyHead->prev = dummyTail;
+            dummyTail->next = dummyHead;
+        }
+
+        void updateExistingNode(node_ptr node, const Value& val) {
+            node->setValue(val);
+            moveToMostRecent(node);
+        }
+
+        void moveToMostRecent(node_ptr node) {
+            removeNode(node);
+            insertNode(node);
+        }
+
+        void removeNode(node_ptr node) {
+            if (!node->prev.expired() && node->next) {
+                auto lastNode = node->prev.lock();
+                auto nextNode = node->next;
+                lastNode->next = nextNode;
+                nextNode->prev = lastNode;
+
+                node->prev.reset();
+                node->next = nullptr;
+            }
+        }
+
+        void insertNode(node_ptr node) {
+            auto oldRecent = dummyTail->prev.lock();
+            oldRecent->next = node;
+            node->prev = oldRecent;
+            node->next = dummyTail;
+            dummyTail->prev = node;
+        }
+
+        void addNewNode(const Key& key, const Value& val) {
+            if (nodeRecords.size() >= _capacity) evictLeastRecent();
+
+            node_ptr node = make_shared<LRU_node_type>(key, val);
+            insertNode(node);
+            nodeRecords[key] = node;
+        }
+
+        void evictLeastRecent() {
+            node_ptr node = dummyHead->next;
+            nodeRecords.erase(node.getKey());
+            removeNode(node);
         }
 };
 
