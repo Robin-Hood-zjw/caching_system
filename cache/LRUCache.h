@@ -23,7 +23,7 @@ class LRU_Node : public CacheNode<Key, Value> {
 template<typename Key, typename Value>
 class LRU_Cache : public CachePolicy<Key, Value> {
     public:
-        using LRU_node_type = LRU_Node<key, Value>;
+        using LRU_node_type = LRU_Node<Key, Value>;
         using node_ptr = shared_ptr<LRU_node_type>;
         using node_map = unordered_map<Key, node_ptr>;
 
@@ -36,14 +36,14 @@ class LRU_Cache : public CachePolicy<Key, Value> {
             Value val;
             get(key, val);
 
-            return vl;
+            return val;
         }
 
         bool get(Key key, Value& val) override {
             lock_guard<mutex> lock(_mutex);
 
             if (nodeRecords.count(key)) {
-                value = nodeRecords[key]->getValue();
+                val = nodeRecords[key]->getValue();
                 return true;
             }
 
@@ -62,6 +62,15 @@ class LRU_Cache : public CachePolicy<Key, Value> {
             addNewNode(key, val);
         }
 
+        void remove(Key key) {
+            lock_guard<mutex> lock(_mutex);
+
+            if (nodeRecords.count(key)) {
+                removeNode(nodeRecords[key]);
+                nodeRecords.erase(key);
+            }
+        }
+
     private:
         mutex _mutex;
         int _capacity;
@@ -72,8 +81,8 @@ class LRU_Cache : public CachePolicy<Key, Value> {
         void initializeList() {
             dummyHead = make_shared<LRU_node_type>(Key(), Value());
             dummyTail = make_shared<LRU_node_type>(Key(), Value());
-            dummyHead->prev = dummyTail;
-            dummyTail->next = dummyHead;
+            dummyHead->next = dummyTail;
+            dummyTail->prev = dummyHead;
         }
 
         void updateExistingNode(node_ptr node, const Value& val) {
@@ -100,6 +109,7 @@ class LRU_Cache : public CachePolicy<Key, Value> {
 
         void insertNode(node_ptr node) {
             auto oldRecent = dummyTail->prev.lock();
+
             oldRecent->next = node;
             node->prev = oldRecent;
             node->next = dummyTail;
@@ -110,8 +120,8 @@ class LRU_Cache : public CachePolicy<Key, Value> {
             if (nodeRecords.size() >= _capacity) evictLeastRecent();
 
             node_ptr node = make_shared<LRU_node_type>(key, val);
-            insertNode(node);
             nodeRecords[key] = node;
+            insertNode(node);
         }
 
         void evictLeastRecent() {
