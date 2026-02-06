@@ -146,12 +146,12 @@ class LRU_K_Cache : public CachePolicy<Key, Value> {
             Value val;
             bool inCache = LRU_Cache<Key, Value>::get(key, val);
 
-            size_t pendingCnt = pendingList->get(key);
-            pendingList->put(key, pendingCnt + 1);
+            size_t pendingCnt = pendingList->get(key) + 1;
+            pendingList->put(key, pendingCnt);
 
             if (inCache) return val;
 
-            if (pendingMap.count(key) && pendingList->get(key) >= k) {
+            if (pendingMap.count(key) && pendingCnt >= _k) {
                 val = pendingMap[key];
 
                 LRU_Cache<Key, Value>::put(key, val);
@@ -162,7 +162,25 @@ class LRU_K_Cache : public CachePolicy<Key, Value> {
             return val;
         }
 
-        void put(Key key, Value val) {}
+        void put(Key key, Value val) {
+            Value val;
+            bool inCache = LRU_Cache<Key, Value>::get(key, val);
+
+            if (inCache) {
+                LRU_Cache<Key, Value>::put(key, val);
+                return;
+            }
+
+            size_t pendingCnt = pendingList->get(key) + 1;
+            pendingList->put(key, pendingCnt);
+            pendingMap[key] = val;
+
+            if (pendingCnt >= _k) {
+                LRU_Cache<Key, Value>::remove(key);
+                pendingList->remove(key);
+                pendingMap.erase(key);
+            }
+        }
     private:
         int _k;
         unordered_map<Key, Value> pendingMap;
