@@ -4,6 +4,7 @@
 #include "CachePolicy.h"
 
 #include <mutex>
+#include <vector>
 #include <memory>
 #include <unordered_map>
 
@@ -12,10 +13,10 @@ using namespace std;
 template<typename Key, typename Value>
 class LRU_Node : public CacheNode<Key, Value> {
     public:
-        weaker_ptr<LRU_Node<Key, Value>> prev;
+        weak_ptr<LRU_Node<Key, Value>> prev;
         shared_ptr<LRU_Node<Key, Value>> next;
 
-        LRU_Node<Key key, Value val> : CacheNode<Key, Value>(key, val) {}
+        LRU_Node(Key key, Value val) : CacheNode<Key, Value>(key, val) {}
 
         friend class LRU_Cache<Key, Value>;
 };
@@ -43,6 +44,7 @@ class LRU_Cache : public CachePolicy<Key, Value> {
             lock_guard<mutex> lock(_mutex);
 
             if (nodeRecords.count(key)) {
+                moveToMostRecent(nodeRecords[key]);
                 val = nodeRecords[key]->getValue();
                 return true;
             }
@@ -126,13 +128,22 @@ class LRU_Cache : public CachePolicy<Key, Value> {
 
         void evictLeastRecent() {
             node_ptr node = dummyHead->next;
-            nodeRecords.erase(node.getKey());
+            nodeRecords.erase(node->getKey());
             removeNode(node);
         }
 };
 
-// template<typename Key, typename Value>
-// class LRU_Cache_K : public CachePolicy<Key, Value> {};
+template<typename Key, typename Value>
+class LRU_Cache_K : public CachePolicy<Key, Value> {
+    private:
+        int _k;
+
+};
 
 // template<typename Key, typename Value>
-// class LRU_Cache_Hash : public CachePolicy<Key, Value> {};
+// class LRU_Cache_Hash : public CachePolicy<Key, Value> {
+//     private:
+//         int sliceNum;
+//         int _capacity;
+
+// };
