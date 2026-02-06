@@ -134,10 +134,23 @@ class LRU_Cache : public CachePolicy<Key, Value> {
 };
 
 template<typename Key, typename Value>
-class LRU_Cache_K : public CachePolicy<Key, Value> {
+class LRU_K_Cache : public CachePolicy<Key, Value> {
+    public:
+        LRU_K_Cache(int capacity, int countCapacity, int k) : LRU_Cache<Key, Value>(capacity) {
+            historyList = make_unique<LRU_Cache<Key, size_t>>(countCapacity);
+            _k = k;
+        }
+
+        Value get(Key key) {
+        }
+
+        void put(Key key, Value val) {
+            
+        }
     private:
         int _k;
-
+        unordered_map<Key, Value> pendingMap;
+        unique_ptr<LRU_Cache<Key, size_t>> historyList;
 };
 
 // template<typename Key, typename Value>
