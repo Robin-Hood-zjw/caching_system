@@ -136,21 +136,37 @@ class LRU_Cache : public CachePolicy<Key, Value> {
 template<typename Key, typename Value>
 class LRU_K_Cache : public CachePolicy<Key, Value> {
     public:
-        LRU_K_Cache(int capacity, int countCapacity, int k) : LRU_Cache<Key, Value>(capacity) {
-            historyList = make_unique<LRU_Cache<Key, size_t>>(countCapacity);
-            _k = k;
-        }
+        LRU_K_Cache(int capacity, int countCapacity, int k)
+            : LRU_Cache<Key, Value>(capacity) {
+                pendingList = make_unique<LRU_Cache<Key, size_t>>(countCapacity);
+                _k = k;
+            }
 
         Value get(Key key) {
+            Value val;
+            bool inCache = LRU_Cache<Key, Value>::get(key, val);
+
+            size_t pendingCnt = pendingList->get(key);
+            pendingList->put(key, pendingCnt + 1);
+
+            if (inCache) return val;
+
+            if (pendingMap.count(key) && pendingList->get(key) >= k) {
+                val = pendingMap[key];
+
+                LRU_Cache<Key, Value>::put(key, val);
+                pendingList->remove(key);
+                pendingMap.erase(key);
+            }
+
+            return val;
         }
 
-        void put(Key key, Value val) {
-            
-        }
+        void put(Key key, Value val) {}
     private:
         int _k;
         unordered_map<Key, Value> pendingMap;
-        unique_ptr<LRU_Cache<Key, size_t>> historyList;
+        unique_ptr<LRU_Cache<Key, size_t>> pendingList;
 };
 
 // template<typename Key, typename Value>
