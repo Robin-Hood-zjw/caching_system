@@ -189,10 +189,31 @@ class LRU_K_Cache : public CachePolicy<Key, Value> {
         unique_ptr<LRU_Cache<Key, size_t>> pendingList;
 };
 
-// template<typename Key, typename Value>
-// class LRU_Cache_Hash : public CachePolicy<Key, Value> {
-//     private:
-//         int sliceNum;
-//         int _capacity;
+template<typename Key, typename Value>
+class Hash_LRU_Cache : public CachePolicy<Key, Value> {
+    public:
+        Hash_LRU_Cache(size_t capacity, int sliceNum):
+            _sliceNUm(sliceNum > 0 ? sliceNum : thread::hardware_concurrency()),
+            _capacity(capacity) {
+                size_t size = ceil(_capacity / static_cast<double>(_sliceNum));
 
-// };
+                for (size_t i = 0; i < _sliceNum; i++) {
+                    LRU_sliced_Cache.push_back(new LRU_Cache<Key, Value>(size));
+                }
+            }
+
+        Value get(Key key) {}
+
+        bool get(Key key, Value& val) {}
+
+        void put(Key key, Value val) {}
+    private:
+        int _sliceNum;
+        size_t _capacity;
+        vector<unique_ptr<LRU_Cache<Key, Value>>> LRU_sliced_Cache;
+
+        size_t Hash(Key key) {
+            hash<Key> hashFunc;
+            return hashFunc(key);
+        }
+};
