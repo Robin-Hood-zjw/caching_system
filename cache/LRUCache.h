@@ -9,18 +9,7 @@
 #include <cstring>
 #include <unordered_map>
 
-using namespace std;
-
-template<typename Key, typename Value>
-class LRU_Node : public CacheNode<Key, Value> {
-    public:
-        weak_ptr<LRU_Node<Key, Value>> prev;
-        shared_ptr<LRU_Node<Key, Value>> next;
-
-        LRU_Node(Key key, Value val) : CacheNode<Key, Value>(key, val) {}
-
-        friend class LRU_Cache<Key, Value>;
-};
+using namespace std; 
 
 template<typename Key, typename Value>
 class LRU_Cache : public CachePolicy<Key, Value> {
