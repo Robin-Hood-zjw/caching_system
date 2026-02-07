@@ -216,7 +216,10 @@ class Hash_LRU_Cache : public CachePolicy<Key, Value> {
             LRU_sliced_Cache[index]->get(key, val);
         }
 
-        void put(Key key, Value val) {}
+        void put(Key key, Value val) {
+            size_t index = Hash(key) % _sliceNum;
+            LRU_sliced_Cache[index]->put(key, val);
+        }
     private:
         int _sliceNum;
         size_t _capacity;
