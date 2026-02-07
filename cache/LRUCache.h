@@ -137,46 +137,48 @@ template<typename Key, typename Value>
 class LRU_K_Cache : public CachePolicy<Key, Value> {
     public:
         LRU_K_Cache(int capacity, int countCapacity, int k)
-            : LRU_Cache<Key, Value>(capacity) {
-                pendingList = make_unique<LRU_Cache<Key, size_t>>(countCapacity);
-                _k = k;
-            }
+            : LRU_Cache<Key, Value>(capacity),
+            pendingList(make_unique<LRU_Cache<Key, size_t>>(countCapacity)),
+            _k(k) {}
 
         Value get(Key key) {
-            Value val;
-            bool inCache = LRU_Cache<Key, Value>::get(key, val);
+            Value result;
+            bool inCache = LRU_Cache<Key, Value>::get(key, result);
+            if (inCache) return result;
 
-            size_t pendingCnt = pendingList->get(key) + 1;
+            size_t pendingCnt = 0;
+            pendingList->get(key, pendingCnt);
+            pendingCnt++;
             pendingList->put(key, pendingCnt);
 
-            if (inCache) return val;
-
             if (pendingMap.count(key) && pendingCnt >= _k) {
-                val = pendingMap[key];
+                result = pendingMap[key];
 
-                LRU_Cache<Key, Value>::put(key, val);
+                LRU_Cache<Key, Value>::put(key, result);
                 pendingList->remove(key);
                 pendingMap.erase(key);
             }
 
-            return val;
+            return result;
         }
 
         void put(Key key, Value val) {
-            Value val;
-            bool inCache = LRU_Cache<Key, Value>::get(key, val);
+            Value result;
+            bool inCache = LRU_Cache<Key, Value>::get(key, result);
 
             if (inCache) {
                 LRU_Cache<Key, Value>::put(key, val);
                 return;
             }
 
-            size_t pendingCnt = pendingList->get(key) + 1;
+            size_t pendingCnt = 0;
+            pendingList->get(key, pendingCnt);
+            pendingCnt++;
             pendingList->put(key, pendingCnt);
             pendingMap[key] = val;
 
             if (pendingCnt >= _k) {
-                LRU_Cache<Key, Value>::remove(key);
+                LRU_Cache<Key, Value>::put(key, val);
                 pendingList->remove(key);
                 pendingMap.erase(key);
             }
