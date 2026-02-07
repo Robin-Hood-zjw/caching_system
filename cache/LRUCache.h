@@ -6,6 +6,7 @@
 #include <mutex>
 #include <vector>
 #include <memory>
+#include <cstring>
 #include <unordered_map>
 
 using namespace std;
@@ -202,9 +203,18 @@ class Hash_LRU_Cache : public CachePolicy<Key, Value> {
                 }
             }
 
-        Value get(Key key) {}
+        Value get(Key key) {
+            Value result;
+            memset(&result, 0, sizeof(result));
+            get(key, result);
 
-        bool get(Key key, Value& val) {}
+            return result;
+        }
+
+        bool get(Key key, Value& val) {
+            size_t index = Hash(key) % _sliceNum;
+            LRU_sliced_Cache[index]->get(key, val);
+        }
 
         void put(Key key, Value val) {}
     private:
