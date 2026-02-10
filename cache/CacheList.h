@@ -14,6 +14,38 @@ class FrequenceList {
             _tail->prev = _head;
         }
 
+        bool isEmpty() const {
+            return _head->next == _tail;
+        }
+
+        void addNode(node_ptr node) {
+            if (!node || !_head || !_tail) return;
+            node_ptr lastNode = _tail->prev.lock();
+
+            lastNode->next = node;
+            node->prev = lastNode;
+            node->next = _tail;
+            _tail->prev = node;
+        }
+
+        void removeNode(node_ptr node) {
+            if (!node || !_head || !_tail) return;
+            if (!node->prev.expired() || !node->next) return;
+
+            node_ptr lastNode = node->prev.lock();
+            node_ptr nextNode = node->next;
+
+            lastNode->next = nextNode;
+            nextNode->prev = lastNode;
+            node->next = nullptr;
+        }
+
+        node_ptr getFirstNode() const {
+            return _head->next;
+        }
+
+        friend class LFU_Cache<Key, Value>;
+
     private:
         struct Node {
             int freq;
