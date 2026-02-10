@@ -13,6 +13,10 @@ class LFU_Cache : public CachePolicy<key, Value> {
         using node_ptr = shared_ptr<Node>;
         using node_map = unordered_map<Key, node_ptr>;
 
+        LFU_Cache(int capacity): _capacity(capacity), minFreq(INT8_MAX) {}
+        ~LFU_Cache() override = default;
+
+        
     private:
         int _capacity;
         int minFreq;
