@@ -7,7 +7,13 @@ using namespace std;
 template<typename Key, typename Value>
 class FrequenceList {
     public:
-        
+        explicit FrequenceList(int n) : _freq(n) {
+            _head = make_shared<Node>();
+            _tail = make_shared<Node>();
+            _head->next = _tail;
+            _tail->prev = _head;
+        }
+
     private:
         struct Node {
             int freq;
