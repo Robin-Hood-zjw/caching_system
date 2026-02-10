@@ -153,8 +153,8 @@ class LRU_K_Cache : public CachePolicy<Key, Value> {
         }
 
         void put(Key key, Value val) {
-            Value result;
-            bool inCache = LRU_Cache<Key, Value>::get(key, result);
+            Value oldValue;
+            bool inCache = LRU_Cache<Key, Value>::get(key, oldValue);
 
             if (inCache) {
                 LRU_Cache<Key, Value>::put(key, val);
@@ -174,7 +174,7 @@ class LRU_K_Cache : public CachePolicy<Key, Value> {
             }
         }
     private:
-        int _k;
+        int  _k;
         unordered_map<Key, Value> pendingMap;
         unique_ptr<LRU_Cache<Key, size_t>> pendingList;
 };
@@ -202,7 +202,7 @@ class Hash_LRU_Cache : public CachePolicy<Key, Value> {
 
         bool get(Key key, Value& val) {
             size_t index = Hash(key) % _sliceNum;
-            LRU_sliced_Cache[index]->get(key, val);
+            return LRU_sliced_Cache[index]->get(key, val);
         }
 
         void put(Key key, Value val) {
