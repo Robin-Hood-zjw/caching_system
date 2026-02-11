@@ -26,7 +26,7 @@ class LFU_Cache : public CachePolicy<key, Value> {
             lock_guard<mutex> lock(_mutex);
 
             if (nodeRecords.count(key)) {
-                
+                putInternal(nodeRecords[key], val);
                 return true;
             }
             return false;
@@ -56,26 +56,26 @@ class LFU_Cache : public CachePolicy<key, Value> {
         node_map nodeRecords;
         unordered_map<int, FrequenceList<Key, Value>*> freqMap;
 
-        // void getInternal(node_ptr node, Value& value) {
-        //     value = node->value;
-        //     removeFromList(node);
+        void getInternal(node_ptr node, Value& value) {
+            value = node->value;
+            removeFromList(node);
 
-        //     node->freq++;
-        //     addIntoList(node);
-        // }
+            node->freq++;
+            addIntoList(node);
+        }
 
-        // void removeFromList(node_ptr node) {
-        //     if (!node) return;
+        void removeFromList(node_ptr node) {
+            if (!node) return;
 
-        //     int freq = node->freq;
-        //     freqMap[freq]->removeNode(node);
-        // }
+            int freq = node->freq;
+            freqMap[freq]->removeNode(node);
+        }
 
-        // void addIntoList(node_ptr node) {
-        //     if (!node) return;
+        void addIntoList(node_ptr node) {
+            if (!node) return;
 
-        //     int freq = node->freq;
-        //     if (!freqMap.count(freq)) freqMap[freq] = new FrequenceList<key, Value>(freq);
-        //     freqMap[freq]->addNode(node);
-        // }
+            int freq = node->freq;
+            if (!freqMap.count(freq)) freqMap[freq] = new FrequenceList<key, Value>(freq);
+            freqMap[freq]->addNode(node);
+        }
 };
