@@ -188,7 +188,7 @@ class Hash_LRU_Cache : public CachePolicy<Key, Value> {
                 size_t size = ceil(_capacity / static_cast<double>(_sliceNum));
 
                 for (size_t i = 0; i < _sliceNum; i++) {
-                    LRU_sliced_Cache.push_back(new LRU_Cache<Key, Value>(size));
+                    _slicedCache.push_back(new LRU_Cache<Key, Value>(size));
                 }
             }
 
@@ -202,17 +202,17 @@ class Hash_LRU_Cache : public CachePolicy<Key, Value> {
 
         bool get(Key key, Value& val) {
             size_t index = Hash(key) % _sliceNum;
-            return LRU_sliced_Cache[index]->get(key, val);
+            return _slicedCache[index]->get(key, val);
         }
 
         void put(Key key, Value val) {
             size_t index = Hash(key) % _sliceNum;
-            LRU_sliced_Cache[index]->put(key, val);
+            _slicedCache[index]->put(key, val);
         }
     private:
         int _sliceNum;
         size_t _capacity;
-        vector<unique_ptr<LRU_Cache<Key, Value>>> LRU_sliced_Cache;
+        vector<unique_ptr<LRU_Cache<Key, Value>>> _slicedCache;
 
         size_t Hash(Key key) {
             hash<Key> hashFunc;
