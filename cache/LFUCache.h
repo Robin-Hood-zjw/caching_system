@@ -9,16 +9,18 @@
 using namespace std;
 
 template<typename Key, typename Value>
-class LFU_Cache : public CachePolicy<key, Value> {
+class LFU_Cache : public CachePolicy<Key, Value> {
     public:
         using Node = typename FreqList<Key, Value>::Node;
         using node_ptr = shared_ptr<Node>;
         using node_map = unordered_map<Key, node_ptr>;
 
-        LFU_Cache(int capacity, int maxAverageNum = 1000000):
+        LFU_Cache(int capacity, int maxAverageNum = 1000000): 
             _capacity(capacity),
-            _minFreq(INT8_MAX),
-            _maxAvgNum(maxAverageNum) {}
+            _minFreq(INT_MAX),
+            _maxAvgNum(maxAverageNum),
+            _curAvgNum(0),
+            _curTotalNum(0) {}
         ~LFU_Cache() override = default;
 
         Value get(Key key) override {
@@ -31,7 +33,7 @@ class LFU_Cache : public CachePolicy<key, Value> {
             lock_guard<mutex> lock(_mutex);
 
             if (_nodeRecords.count(key)) {
-                putInternal(_nodeRecords[key], val);
+                getInternal(_nodeRecords[key], val);
                 return true;
             }
             return false;
@@ -47,10 +49,12 @@ class LFU_Cache : public CachePolicy<key, Value> {
                 return;
             }
 
-            putInternal(key, value);
+            putInternal(key, val);
         }
 
         void purge() {
+            lock_guard<mutex> lock(_mutex);
+
             _nodeRecords.clear();
             _freqLists.clear();
         }
@@ -64,7 +68,8 @@ class LFU_Cache : public CachePolicy<key, Value> {
 
         mutex _mutex; 
         node_map _nodeRecords;
-        unordered_map<int, FreqList<Key, Value>*> _freqLists;
+        unordered_map<int, unique_ptr<FreqList<Key, Value>>> _freqLists;
+
 
         void getInternal(node_ptr node, Value& val) {
             val = node->value;
@@ -73,7 +78,7 @@ class LFU_Cache : public CachePolicy<key, Value> {
             node->freq++;
             addIntoFreqList(node);
 
-            if (node->freq == _minFreq + 1 && _freqLists[node->freq - 1]->isEmpty()) _minFreq++;
+            if (node->freq == _minFreq + 1 && _freqLists[_minFreq]->isEmpty()) _minFreq++;
             addFreqNum();
         }
 
@@ -88,7 +93,15 @@ class LFU_Cache : public CachePolicy<key, Value> {
         }
 
         void cleanData() {
+            // node_ptr node = _freqLists[_minFreq]->getFirstNode();
+
+            auto it = _freqLists.find(_minFreq);
+            if (it == _freqLists.end() || it->second->isEmpty())
+                updateMinFreq();
+
             node_ptr node = _freqLists[_minFreq]->getFirstNode();
+            _curTotalNum -= node->freq;
+
             removeFromFreqList(node);
             _nodeRecords.erase(node->key);
         }
@@ -97,14 +110,16 @@ class LFU_Cache : public CachePolicy<key, Value> {
             if (!node) return;
 
             int freq = node->freq;
-            _freqLists[freq]->removeNode(node);
+            auto it = _freqLists.find(freq);
+            if (it != _freqLists.end()) it->second->removeNode(node);
         }
 
         void addIntoFreqList(node_ptr node) {
             if (!node) return;
 
             int freq = node->freq;
-            if (!_freqLists.count(freq)) _freqLists[freq] = new FreqList<key, Value>(freq);
+            if (!_freqLists.count(freq)) _freqLists[freq] = make_unique<FreqList<Key, Value>>(freq);
+
             _freqLists[freq]->addNode(node);
         }
 
@@ -131,27 +146,27 @@ class LFU_Cache : public CachePolicy<key, Value> {
 
                 node_ptr node = it->second;
                 int oldFreq = node->freq;
-                int decay = _maxAvgNum / 2;
-
-                node->freq -= decay;
                 removeFromFreqList(node);
 
-                if (node->freq < 1) node->freq = 1;
+                int decay = _maxAvgNum / 2;
+                node->freq = max(1, node->freq - decay);
 
-                int delta = node->feq - oldFreq;
+                int delta = node->freq - oldFreq;
                 _curTotalNum += delta;
                 addIntoFreqList(node);
             }
+
+            updateMinFreq();
         }
 
         void updateMinFreq() {
-            _minFreq = INT8_MAX;
+            _minFreq = INT_MAX;
 
             for (const auto& pair : _freqLists) {
                 if (pair.second && !pair.second->isEmpty()) {
                     _minFreq = min(_minFreq, pair.first);
                 }
             }
-            if (_minFreq == INT8_MAX) _minFreq = 1;
+            if (_minFreq == INT_MAX) _minFreq = 1;
         }
 };
