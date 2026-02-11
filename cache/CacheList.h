@@ -5,9 +5,9 @@
 using namespace std;
 
 template<typename Key, typename Value>
-class FrequenceList {
+class FreqList {
     public:
-        explicit FrequenceList(int n) : _freq(n) {
+        explicit FreqList(int n) : _freq(n) {
             _head = make_shared<Node>();
             _tail = make_shared<Node>();
             _head->next = _tail;

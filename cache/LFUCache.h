@@ -9,7 +9,7 @@
 template<typename Key, typename Value>
 class LFU_Cache : public CachePolicy<key, Value> {
     public:
-        using Node = typename FrequenceList<Key, Value>::Node;
+        using Node = typename FreqList<Key, Value>::Node;
         using node_ptr = shared_ptr<Node>;
         using node_map = unordered_map<Key, node_ptr>;
 
@@ -54,7 +54,7 @@ class LFU_Cache : public CachePolicy<key, Value> {
         int minFreq;
         mutex _mutex; 
         node_map nodeRecords;
-        unordered_map<int, FrequenceList<Key, Value>*> freqMap;
+        unordered_map<int, FreqList<Key, Value>*> freqMap;
 
         void getInternal(node_ptr node, Value& value) {
             value = node->value;
@@ -62,6 +62,8 @@ class LFU_Cache : public CachePolicy<key, Value> {
 
             node->freq++;
             addIntoList(node);
+
+            if (node->freq == minFreq + 1 && freqMap[node->freq - 1]->isEmpty()) minFreq++;
         }
 
         void removeFromList(node_ptr node) {
@@ -75,7 +77,7 @@ class LFU_Cache : public CachePolicy<key, Value> {
             if (!node) return;
 
             int freq = node->freq;
-            if (!freqMap.count(freq)) freqMap[freq] = new FrequenceList<key, Value>(freq);
+            if (!freqMap.count(freq)) freqMap[freq] = new FreqList<key, Value>(freq);
             freqMap[freq]->addNode(node);
         }
 };
