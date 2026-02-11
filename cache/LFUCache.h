@@ -47,14 +47,14 @@ class LFU_Cache : public CachePolicy<key, Value> {
 
         void purge() {
             nodeRecords.clear();
-            freqMap.clear();
+            freqLists.clear();
         }
     private:
         int _capacity;
         int minFreq;
         mutex _mutex; 
         node_map nodeRecords;
-        unordered_map<int, FreqList<Key, Value>*> freqMap;
+        unordered_map<int, FreqList<Key, Value>*> freqLists;
 
         void getInternal(node_ptr node, Value& value) {
             value = node->value;
@@ -63,21 +63,36 @@ class LFU_Cache : public CachePolicy<key, Value> {
             node->freq++;
             addIntoList(node);
 
-            if (node->freq == minFreq + 1 && freqMap[node->freq - 1]->isEmpty()) minFreq++;
+            if (node->freq == minFreq + 1 && freqLists[node->freq - 1]->isEmpty()) minFreq++;
+        }
+
+        void putInternal(Key key, Value value) {
+            if (nodeRecords.size() == _capacity) cleanData();
+
+            node_ptr node = make_shared<Node>(key, value);
+            nodeRecords[key] = node;
+            addIntoList(node);
+            minFreq = min(minFreq, 1);
+        }
+
+        void cleanData() {
+            node_ptr node = freqLists[minFreq]->getFirstNode();
+            removeFromList(node);
+            nodeRecords.erase(node->key);
         }
 
         void removeFromList(node_ptr node) {
             if (!node) return;
 
             int freq = node->freq;
-            freqMap[freq]->removeNode(node);
+            freqLists[freq]->removeNode(node);
         }
 
         void addIntoList(node_ptr node) {
             if (!node) return;
 
             int freq = node->freq;
-            if (!freqMap.count(freq)) freqMap[freq] = new FreqList<key, Value>(freq);
-            freqMap[freq]->addNode(node);
+            if (!freqLists.count(freq)) freqLists[freq] = new FreqList<key, Value>(freq);
+            freqLists[freq]->addNode(node);
         }
 };
