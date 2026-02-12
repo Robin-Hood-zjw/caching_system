@@ -40,6 +40,33 @@ class ARC_LFU {
             return it != _mainCache.end() ? 
                 updateExistingNode(it->second, value) : addNewNode(key, value);
         }
+
+        bool contain(Key key) {
+            return _mainCache.find(key) != _mainCache.end();
+        }
+
+        bool checkGhost(Key key) {
+            auto it = _ghostCache.find(key);
+
+            if (it != _ghostCache.end()) {
+                removeFromGhost(it->second);
+                _ghostCache.erase(it);
+                return true;
+            }
+            return false;
+        }
+
+        void increaseCapacity() {
+            _capacity++;
+        }
+
+        bool decreaseCapacity() {
+            if (_capacity <= 0) return false;
+            if (_mainCache.size() == _capacity) evictLeastFreq();
+
+            _capacity--;
+            return true;
+        }
     private:
         size_t _minFreq;
         size_t _capacity;
