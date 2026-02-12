@@ -39,7 +39,7 @@ class ARC_LRU {
             auto it = _mainCache.find(key);
 
             return it != _mainCache.end() ? 
-                updateExistingNode(it->second, value) : ddNewNode(key, value);
+                updateExistingNode(it->second, value) : addNewNode(key, value);
         }
 
         bool checkGhost(Key key) {
@@ -83,10 +83,10 @@ class ARC_LRU {
             _mainHead->next = _mainTail;
             _mainTail->prev = _mainHead;
 
-            _ghostHead = std::make_shared<>(node_type);
-            _ghostTail = std::make_shared<>(node_type);
-            ghostHead_->next_ = ghostTail_;
-            ghostTail_->prev_ = ghostHead_;
+            _ghostHead = std::make_shared<node_type>();
+            _ghostTail = std::make_shared<node_type>();
+            _ghostHead->next = _ghostTail;
+            _ghostTail->prev = _ghostHead;
         }
 
         bool updateExistingNode(node_ptr node, const Value& value) {
@@ -141,7 +141,7 @@ class ARC_LRU {
             if (_ghostCache.size() >= _ghostCapacity) removeOldestGhost();
             addToGhost(leastRecent);
 
-            _mainCache.erase(leastRecent);
+            _mainCache.erase(leastRecent->getKey());
         }
 
         void removeFromMain(node_ptr node) {
