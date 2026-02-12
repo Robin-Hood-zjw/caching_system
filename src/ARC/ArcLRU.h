@@ -104,6 +104,12 @@ class ARC_LRU {
             return true;
         }
 
+        bool updateNodeAccess(node_ptr node) {
+            moveToFront(node);
+            node->incrementAccessCount();
+            return node->getAccessCount() >= _transformThreshold;
+        }
+
         void moveToFront(node_ptr node) {
             if (!node->prev.expired() && node->next) {
                 auto lastNode = node->prev.lock();
@@ -136,5 +142,46 @@ class ARC_LRU {
             addToGhost(leastRecent);
 
             _mainCache.erase(leastRecent);
+        }
+
+        void removeFromMain(node_ptr node) {
+            if (!node->prev.expired() && node->next) {
+                auto lastNode = node->prev.lock();
+                auto nextNode = node->next;
+
+                lastNode->next = nextNode;
+                nextNode->prev = lastNode;
+                node->next = nullptr;
+            }
+        }
+
+        void removeFromGhost(node_ptr node) {
+            if (!node->prev.expired() && node->next) {
+                auto lastNode = node->prev.lock();
+                auto nextNode = node->next;
+
+                lastNode->next = nextNode;
+                nextNode->prev = lastNode;
+                node->next = nullptr;
+            }
+        }
+
+        void addToGhost(node_ptr node) {
+            node->_accessCnt = 1;
+
+            node->next = _ghostHead->next;
+            node->prev = _ghostHead;
+            _ghostHead->next->prev = node;
+            _ghostHead->next = node;
+
+            _ghostCache[node->getKey()] = node;
+        }
+
+        void removeOldestGhost() {
+            node_ptr oldestGhost = _ghostTail->prev.lock();
+            if (!oldestGhost || oldestGhost == _ghostHead) return;
+
+            removeFromGhost(oldestGhost);
+            _ghostCache.erase(oldestGhost->getKey());
         }
 };
