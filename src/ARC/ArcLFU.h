@@ -3,6 +3,7 @@
 #include "ArcNode.h"
 
 #include <map>
+#include <list>
 #include <mutex>
 #include <unordered_map>
 
@@ -89,5 +90,93 @@ class ARC_LFU {
             _ghostTail->prev = _ghostHead;
         }
 
+        bool updateExistingNode(node_ptr node, const Value& value) {
+            node->setValue(value);
+            updateNodeFreq(node);
+            return true;
+        }
 
+        bool addNewNode(const Key& key, const Value& value) {
+            if (_mainCache.size() >= _capacity) evictLeastFreq();
+
+            node_ptr newNode = std::make_shared<node_type>(key, value);
+            _mainCache[key] = newNode;
+
+            if (_freqMap.find(1) == _freqMap.end()) {
+                _freqMap[1] = std::list<node_ptr>();
+            }
+            _freqMap[1].push_back(newNode);
+            _minFreq = 1;
+
+            return true;
+        }
+
+        void updateNodeFreq(node_ptr node) {
+            size_t oldFreq = node->getAccessCount();
+            node->incrementAccessCount();
+
+            auto& oldList = _freqMap[oldFreq];
+            oldList.remove(node);
+
+            size_t newFreq = node->getAccessCount();
+            if (oldList.empty()) {
+                _freqMap.erase(oldFreq);
+                if (oldFreq == _minFreq) _minFreq = newFreq;
+            }
+
+            if (_freqMap.find(newFreq) == _freqMap.end()) {
+                _freqMap[newFreq] = std::list<node_ptr>();
+            }
+            _freqMap[newFreq].push_back(node);
+        }
+
+        void evictLeastFreq() {
+            if (_freqMap.empty()) return;
+
+            auto& minFreqList = _freqList[_minFreq];
+            if (minFreqList.empty()) return;
+
+            node_ptr leastNode = minFreqList.front();
+            minFreqList.pop_front();
+
+            if (minFreqList.empty()) {
+                _freqMap.erase(_minFreq);
+                if (!_freqMap.empty()) _minFreq = _freqMap.begin()->first;
+            }
+
+            if (_ghostCache.size() >= _ghostCapacity) removeOldestGhost();
+            addToGhost(leastNode);
+            _mainCache.erase(leastNode->getKey());
+        }
+
+        void removeFromGhost(node_ptr node) {
+            if (!node->prev.expired() && node->next) {
+                auto lastNode = node->prev.lock();
+                auto nextNode = node->next;
+
+                lastNode->next = nextNode;
+                nextNode->prev = lastNode;
+                node->next = nullptr;
+            }
+        }
+
+        void addToGhost(node_ptr node) {
+            auto oldTail = _ghostTail->prev.lock();
+
+            node->next = _ghostTail;
+            node->prev = oldTail;
+
+            if (!_ghostTail->prev.expired()) oldTail->next = node;
+            _ghostTail->prev = node;
+            _ghostCache[node->getKey()] = node;
+        }
+
+        void removeOldestGhost() {
+            node_ptr oldestGhost = _ghostHead->next;
+
+            if (oldestGhost != _ghostTail) {
+                removeFromGhost(oldestGhost);
+                _ghostCache.erase(oldestGhost->getKey());
+            }
+        }
 };
