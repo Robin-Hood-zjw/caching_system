@@ -168,8 +168,8 @@ class Hash_LFU_Cache : public CachePolicy<Key, Value> {
     public:
         Hash_LFU_Cache(size_t capacity, int sliceNum, int maxAvgNum = 10):
             _capacity(capacity),
-            _sliceNum(sliceNum > 0 ? sliceNum : thread::hardware_concurrency()) {
-                size_t size = ceil(_capacity / static_cast<double>(_sliceNum));
+            _sliceNum(sliceNum > 0 ? sliceNum : std::thread::hardware_concurrency()) {
+                size_t size = std::ceil(_capacity / static_cast<double>(_sliceNum));
 
                 for (size_t i = 0; i < _sliceNum; i++) {
                     _slicedCache.push_back(new LFU_Cache<Key, Value>(size, maxAvgNum));
@@ -182,23 +182,23 @@ class Hash_LFU_Cache : public CachePolicy<Key, Value> {
             return value;
         }
 
-        bool get(Key key, Value& val) {
+        bool get(Key key, Value& value) {
             size_t index = Hash(key) % _sliceNum;
-            return _slicedCache[index]->get(key, val);
+            return _slicedCache[index]->get(key, value);
         }
 
-        void put(Key key, Value val) {
+        void put(Key key, Value value) {
             size_t index = Hash(key) % _sliceNum;
-            _slicedCache[index]->put(key, val);
+            _slicedCache[index]->put(key, value);
         }
 
         void purge() {
             for (auto& cache : _slicedCache) cache->purge();
         }
     private:
-        size_t _capacity;
         int _sliceNum;
-        vector<unique_ptr<LFU_Cache<Key, Value>>> _slicedCache;
+        size_t _capacity;
+        std::vector<std::unique_ptr<LFU_Cache<Key, Value>>> _slicedCache;
 
         size_t Hash(Key key) {
             hash<Key> hashFunc;
