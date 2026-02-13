@@ -63,6 +63,7 @@ class LRU_Cache : public CachePolicy<Key, Value> {
     private:
         int _capacity;
         std::mutex _mutex;
+
         node_ptr _dummyHead;
         node_ptr _dummyTail;
         node_map _nodeRecords;
@@ -123,57 +124,58 @@ class LRU_Cache : public CachePolicy<Key, Value> {
 template<typename Key, typename Value>
 class LRU_K_Cache : public CachePolicy<Key, Value> {
     public:
-        LRU_K_Cache(int capacity, int countCapacity, int k)
+        LRU_K_Cache(int capacity, int historyCapacity, int k)
             : LRU_Cache<Key, Value>(capacity),
-            pendingList(make_unique<LRU_Cache<Key, size_t>>(countCapacity)),
+            _pendingLists(std::make_unique<LRU_Cache<Key, size_t>>(countCapacity)),
             _k(k) {}
 
         Value get(Key key) {
             Value result;
             bool inCache = LRU_Cache<Key, Value>::get(key, result);
-            if (inCache) return result;
 
             size_t pendingCnt = 0;
-            pendingList->get(key, pendingCnt);
+            _pendingLists->get(key, pendingCnt);
             pendingCnt++;
-            pendingList->put(key, pendingCnt);
+            _pendingLists->put(key, pendingCnt);
 
-            if (pendingMap.count(key) && pendingCnt >= _k) {
-                result = pendingMap[key];
+            if (inCache) return result;
+
+            if (_pendingMap.count(key) && pendingCnt >= _k) {
+                result = _pendingMap[key];
 
                 LRU_Cache<Key, Value>::put(key, result);
-                pendingList->remove(key);
-                pendingMap.erase(key);
+                _pendingLists->remove(key);
+                _pendingMap.erase(key);
             }
 
             return result;
         }
 
-        void put(Key key, Value val) {
+        void put(Key key, Value value) {
             Value oldValue;
             bool inCache = LRU_Cache<Key, Value>::get(key, oldValue);
 
             if (inCache) {
-                LRU_Cache<Key, Value>::put(key, val);
+                LRU_Cache<Key, Value>::put(key, value);
                 return;
             }
 
             size_t pendingCnt = 0;
-            pendingList->get(key, pendingCnt);
+            _pendingLists->get(key, pendingCnt);
             pendingCnt++;
-            pendingList->put(key, pendingCnt);
-            pendingMap[key] = val;
+            _pendingLists->put(key, pendingCnt);
+            _pendingMap[key] = value;
 
             if (pendingCnt >= _k) {
-                LRU_Cache<Key, Value>::put(key, val);
-                pendingList->remove(key);
-                pendingMap.erase(key);
+                LRU_Cache<Key, Value>::put(key, value);
+                _pendingLists->remove(key);
+                _pendingMap.erase(key);
             }
         }
     private:
         int  _k;
-        unordered_map<Key, Value> pendingMap;
-        unique_ptr<LRU_Cache<Key, size_t>> pendingList;
+        std::unordered_map<Key, Value> _pendingMap;
+        std::unique_ptr<LRU_Cache<Key, size_t>> _pendingLists;
 };
 
 template<typename Key, typename Value>
@@ -209,7 +211,7 @@ class Hash_LRU_Cache : public CachePolicy<Key, Value> {
     private:
         int _sliceNum;
         size_t _capacity;
-        vector<unique_ptr<LRU_Cache<Key, Value>>> _slicedCache;
+        vector<std::unique_ptr<LRU_Cache<Key, Value>>> _slicedCache;
 
         size_t Hash(Key key) {
             hash<Key> hashFunc;
