@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CacheNode.h"
-#include "CachePolicy.h"
+#include "../CachePolicy.h"
 
 #include <mutex>
 #include <vector>
@@ -9,14 +9,12 @@
 #include <cstring>
 #include <unordered_map>
 
-using namespace std; 
-
 template<typename Key, typename Value>
 class LRU_Cache : public CachePolicy<Key, Value> {
     public:
-        using LRU_node_type = LRU_Node<Key, Value>;
-        using node_ptr = shared_ptr<LRU_node_type>;
-        using node_map = unordered_map<Key, node_ptr>;
+        using node_type = Node<Key, Value>;
+        using node_ptr = std::shared_ptr<node_type>;
+        using node_map = std::unordered_map<Key, node_ptr>;
 
         LRU_Cache(int capacity): _capacity(capacity) {
             initializeList();
@@ -30,55 +28,55 @@ class LRU_Cache : public CachePolicy<Key, Value> {
             return val;
         }
 
-        bool get(Key key, Value& val) override {
-            lock_guard<mutex> lock(_mutex);
+        bool get(Key key, Value& value) override {
+            std::lock_guard<std::mutex> lock(_mutex);
 
-            if (nodeRecords.count(key)) {
-                moveToMostRecent(nodeRecords[key]);
-                val = nodeRecords[key]->getValue();
+            if (_nodeRecords.count(key)) {
+                moveToMostRecent(_nodeRecords[key]);
+                value = _nodeRecords[key]->getValue();
                 return true;
             }
-
             return false;
         }
 
-        void put(Key key, Value val) override {
+        void put(Key key, Value value) override {
             if (_capacity <= 0) return;
-            lock_guard<mutex> lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
 
-            if (nodeRecords.count(key)) {
-                updateExistingNode(nodeRecords[key], val);
+            if (_nodeRecords.count(key)) {
+                updateExistingNode(_nodeRecords[key], value);
                 return;
             }
 
-            addNewNode(key, val);
+            addNewNode(key, value);
         }
 
         void remove(Key key) {
-            lock_guard<mutex> lock(_mutex);
+            std::lock_guard<std::mutex> lock(_mutex);
 
-            if (nodeRecords.count(key)) {
-                removeNode(nodeRecords[key]);
-                nodeRecords.erase(key);
+            if (_nodeRecords.count(key)) {
+                removeNode(_nodeRecords[key]);
+                _nodeRecords.erase(key);
             }
         }
 
     private:
-        mutex _mutex;
         int _capacity;
-        node_ptr dummyHead;
-        node_ptr dummyTail;
-        node_map nodeRecords;
+        std::mutex _mutex;
+
+        node_ptr _dummyHead;
+        node_ptr _dummyTail;
+        node_map _nodeRecords;
 
         void initializeList() {
-            dummyHead = make_shared<LRU_node_type>(Key(), Value());
-            dummyTail = make_shared<LRU_node_type>(Key(), Value());
-            dummyHead->next = dummyTail;
-            dummyTail->prev = dummyHead;
+            _dummyHead = std::make_shared<node_type>(Key(), Value());
+            _dummyTail = std::make_shared<node_type>(Key(), Value());
+            _dummyHead->next = _dummyTail;
+            _dummyTail->prev = _dummyHead;
         }
 
-        void updateExistingNode(node_ptr node, const Value& val) {
-            node->setValue(val);
+        void updateExistingNode(node_ptr node, const Value& value) {
+            node->setValue(value);
             moveToMostRecent(node);
         }
 
@@ -91,34 +89,34 @@ class LRU_Cache : public CachePolicy<Key, Value> {
             if (!node->prev.expired() && node->next) {
                 auto lastNode = node->prev.lock();
                 auto nextNode = node->next;
+
                 lastNode->next = nextNode;
                 nextNode->prev = lastNode;
-
                 node->prev.reset();
                 node->next = nullptr;
             }
         }
 
         void insertNode(node_ptr node) {
-            auto oldRecent = dummyTail->prev.lock();
+            auto oldRecent = _dummyTail->prev.lock();
 
             oldRecent->next = node;
             node->prev = oldRecent;
-            node->next = dummyTail;
-            dummyTail->prev = node;
+            node->next = _dummyTail;
+            _dummyTail->prev = node;
         }
 
-        void addNewNode(const Key& key, const Value& val) {
-            if (nodeRecords.size() >= _capacity) evictLeastRecent();
+        void addNewNode(const Key& key, const Value& value) {
+            if (_nodeRecords.size() >= _capacity) evictLeastRecent();
 
-            node_ptr node = make_shared<LRU_node_type>(key, val);
-            nodeRecords[key] = node;
+            node_ptr node = std::make_shared<node_type>(key, value);
+            _nodeRecords[key] = node;
             insertNode(node);
         }
 
         void evictLeastRecent() {
-            node_ptr node = dummyHead->next;
-            nodeRecords.erase(node->getKey());
+            node_ptr node = _dummyHead->next;
+            _nodeRecords.erase(node->getKey());
             removeNode(node);
         }
 };
@@ -126,66 +124,67 @@ class LRU_Cache : public CachePolicy<Key, Value> {
 template<typename Key, typename Value>
 class LRU_K_Cache : public CachePolicy<Key, Value> {
     public:
-        LRU_K_Cache(int capacity, int countCapacity, int k)
+        LRU_K_Cache(int capacity, int historyCapacity, int k)
             : LRU_Cache<Key, Value>(capacity),
-            pendingList(make_unique<LRU_Cache<Key, size_t>>(countCapacity)),
+            _pendingLists(std::make_unique<LRU_Cache<Key, size_t>>(countCapacity)),
             _k(k) {}
 
         Value get(Key key) {
             Value result;
             bool inCache = LRU_Cache<Key, Value>::get(key, result);
-            if (inCache) return result;
 
             size_t pendingCnt = 0;
-            pendingList->get(key, pendingCnt);
+            _pendingLists->get(key, pendingCnt);
             pendingCnt++;
-            pendingList->put(key, pendingCnt);
+            _pendingLists->put(key, pendingCnt);
 
-            if (pendingMap.count(key) && pendingCnt >= _k) {
-                result = pendingMap[key];
+            if (inCache) return result;
+
+            if (_pendingMap.count(key) && pendingCnt >= _k) {
+                result = _pendingMap[key];
 
                 LRU_Cache<Key, Value>::put(key, result);
-                pendingList->remove(key);
-                pendingMap.erase(key);
+                _pendingLists->remove(key);
+                _pendingMap.erase(key);
             }
 
             return result;
         }
 
-        void put(Key key, Value val) {
+        void put(Key key, Value value) {
             Value oldValue;
             bool inCache = LRU_Cache<Key, Value>::get(key, oldValue);
 
             if (inCache) {
-                LRU_Cache<Key, Value>::put(key, val);
+                LRU_Cache<Key, Value>::put(key, value);
                 return;
             }
 
             size_t pendingCnt = 0;
-            pendingList->get(key, pendingCnt);
+            _pendingLists->get(key, pendingCnt);
             pendingCnt++;
-            pendingList->put(key, pendingCnt);
-            pendingMap[key] = val;
+            _pendingLists->put(key, pendingCnt);
+            _pendingMap[key] = value;
 
             if (pendingCnt >= _k) {
-                LRU_Cache<Key, Value>::put(key, val);
-                pendingList->remove(key);
-                pendingMap.erase(key);
+                LRU_Cache<Key, Value>::put(key, value);
+                _pendingLists->remove(key);
+                _pendingMap.erase(key);
             }
         }
     private:
         int  _k;
-        unordered_map<Key, Value> pendingMap;
-        unique_ptr<LRU_Cache<Key, size_t>> pendingList;
+        std::unordered_map<Key, Value> _pendingMap;
+        std::unique_ptr<LRU_Cache<Key, size_t>> _pendingLists;
 };
 
 template<typename Key, typename Value>
 class Hash_LRU_Cache : public CachePolicy<Key, Value> {
     public:
         Hash_LRU_Cache(size_t capacity, int sliceNum):
-            _sliceNUm(sliceNum > 0 ? sliceNum : thread::hardware_concurrency()),
+            _sliceNUm(sliceNum > 0 ? sliceNum : std::thread::hardware_concurrency()),
             _capacity(capacity) {
-                size_t size = ceil(_capacity / static_cast<double>(_sliceNum));
+                size_t size = std::ceil(_capacity / static_cast<double>(_sliceNum));
 
                 for (size_t i = 0; i < _sliceNum; i++) {
                     _slicedCache.push_back(new LRU_Cache<Key, Value>(size));
@@ -200,19 +199,19 @@ class Hash_LRU_Cache : public CachePolicy<Key, Value> {
             return result;
         }
 
-        bool get(Key key, Value& val) {
+        bool get(Key key, Value& value) {
             size_t index = Hash(key) % _sliceNum;
-            return _slicedCache[index]->get(key, val);
+            return _slicedCache[index]->get(key, value);
         }
 
-        void put(Key key, Value val) {
+        void put(Key key, Value value) {
             size_t index = Hash(key) % _sliceNum;
-            _slicedCache[index]->put(key, val);
+            _slicedCache[index]->put(key, value);
         }
     private:
         int _sliceNum;
         size_t _capacity;
-        vector<unique_ptr<LRU_Cache<Key, Value>>> _slicedCache;
+        std::vector<std::unique_ptr<LRU_Cache<Key, Value>>> _slicedCache;
 
         size_t Hash(Key key) {
             hash<Key> hashFunc;
