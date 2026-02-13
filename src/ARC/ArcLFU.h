@@ -11,7 +11,7 @@ template<typename Key, typename Value>
 class ARC_LFU {
     public:
         using node_type = ArcNode<Key, Value>;
-        using node_ptr = std::shared_ptr<node_ptr>;
+        using node_ptr = std::shared_ptr<node_type>;
         using node_map = std::unordered_map<Key, node_ptr>;
         using freq_map = std::map<size_t, std::list<node_ptr>>;
 
@@ -23,8 +23,8 @@ class ARC_LFU {
         bool get(Key key, Value& value) {
             std::lock_guard<std::mutex> lock(_mutex);
 
-            auto itr = _mainCache.find(key);
-            if (itr != _mainCache.end()) {
+            auto it = _mainCache.find(key);
+            if (it != _mainCache.end()) {
                 updateNodeFreq(it->second);
                 value = it->second->getValue();
                 return true;
@@ -62,7 +62,7 @@ class ARC_LFU {
         }
 
         bool decreaseCapacity() {
-            if (_capacity <= 0) return false;
+            if (_capacity == 0) return false;
             if (_mainCache.size() == _capacity) evictLeastFreq();
 
             _capacity--;
@@ -133,7 +133,7 @@ class ARC_LFU {
         void evictLeastFreq() {
             if (_freqMap.empty()) return;
 
-            auto& minFreqList = _freqList[_minFreq];
+            auto& minFreqList = _freqMap[_minFreq];
             if (minFreqList.empty()) return;
 
             node_ptr leastNode = minFreqList.front();
@@ -156,6 +156,7 @@ class ARC_LFU {
 
                 lastNode->next = nextNode;
                 nextNode->prev = lastNode;
+                node.prev.reset();
                 node->next = nullptr;
             }
         }
@@ -174,7 +175,7 @@ class ARC_LFU {
         void removeOldestGhost() {
             node_ptr oldestGhost = _ghostHead->next;
 
-            if (oldestGhost != _ghostTail) {
+            if (oldestGhost && oldestGhost != _ghostTail) {
                 removeFromGhost(oldestGhost);
                 _ghostCache.erase(oldestGhost->getKey());
             }

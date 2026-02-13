@@ -22,9 +22,9 @@ class ARC_LRU {
         bool get(Key key, Value& value, bool& shouldTransform) {
             std::lock_guard<std::mutex> lock(_mutex);
 
-            auto itr = _mainCache.find(key);
-            if (itr != _mainCache.end()) {
-                shouldTransform = updateNodeAccess(itr->second);
+            auto it = _mainCache.find(key);
+            if (it != _mainCache.end()) {
+                shouldTransform = updateNodeAccess(it->second);
                 value = it->second->getValue();
                 return true;
             }
