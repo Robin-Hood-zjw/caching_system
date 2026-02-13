@@ -51,13 +51,13 @@ class FreqList {
             int freq;
             Key key;
             Value value;
-            weak_ptr<Node> prev;
-            shared_ptr<Node> next;
+            std::weak_ptr<Node> prev;
+            std::shared_ptr<Node> next;
 
             Node(): freq(1), next(nullptr) {}
             Node(Key key, Value val): freq(1), key(key), value(val), next(nullptr) {}
         };
-        using node_ptr = shared_ptr<Node>;
+        using node_ptr = std::shared_ptr<Node>;
 
         int _freq;
         node_ptr _head;
