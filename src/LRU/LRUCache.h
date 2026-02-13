@@ -1,7 +1,7 @@
 #pragma once
 
 #include "CacheNode.h"
-#include "CachePolicy.h"
+#include "../CachePolicy.h"
 
 #include <mutex>
 #include <vector>
