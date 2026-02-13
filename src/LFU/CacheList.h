@@ -8,8 +8,8 @@ template<typename Key, typename Value>
 class FreqList {
     public:
         explicit FreqList(int n) : _freq(n) {
-            _head = make_shared<Node>();
-            _tail = make_shared<Node>();
+            _head = std::make_shared<Node>();
+            _tail = std::make_shared<Node>();
             _head->next = _tail;
             _tail->prev = _head;
         }
@@ -30,13 +30,14 @@ class FreqList {
 
         void removeNode(node_ptr node) {
             if (!node || !_head || !_tail) return;
-            if (!node->prev.expired() || !node->next) return;
+            if (node->prev.expired() || !node->next) return;
 
-            node_ptr lastNode = node->prev.lock();
-            node_ptr nextNode = node->next;
+            auto lastNode = node->prev.lock();
+            auto nextNode = node->next;
 
             lastNode->next = nextNode;
             nextNode->prev = lastNode;
+            node->prev.reset();
             node->next = nullptr;
         }
 
