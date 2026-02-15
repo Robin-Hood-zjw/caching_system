@@ -16,7 +16,8 @@ class ARC_LFU {
         using freq_map = std::map<size_t, std::list<node_ptr>>;
 
         explicit ARC_LFU(size_t capacity, size_t threshold):
-            _minFreq(0), _capacity(capacity), _ghostCapacity(capacity), _transformThreshold(threshold) {
+            _minFreq(0), _capacity(capacity), 
+            _ghostCapacity(capacity), _transformThreshold(threshold) {
                 initializeLists();
         }
 
@@ -38,8 +39,8 @@ class ARC_LFU {
 
             auto it = _mainCache.find(key);
 
-            return it != _mainCache.end() ? 
-                updateExistingNode(it->second, value) : addNewNode(key, value);
+            return it == _mainCache.end() ? 
+                addNewNode(key, node) : updateExistingNode(it->second, value);
         }
 
         bool contain(Key key) {
@@ -164,8 +165,8 @@ class ARC_LFU {
         void addToGhost(node_ptr node) {
             auto oldTail = _ghostTail->prev.lock();
 
-            node->next = _ghostTail;
             node->prev = oldTail;
+            node->next = _ghostTail;
 
             if (!_ghostTail->prev.expired()) oldTail->next = node;
             _ghostTail->prev = node;

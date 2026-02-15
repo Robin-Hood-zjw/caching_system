@@ -139,10 +139,10 @@ class LFU_Cache : public CachePolicy<Key, Value> {
                 node_ptr node = it->second;
                 removeFromFreqList(node);
 
-                int decay = _maxAvgNum / 2;
-                node->freq = max(1, node->freq - decay);
-
                 int oldFreq = node->freq;
+                int decay = _maxAvgNum / 2;
+                node->freq = max(1, oldFreq - decay);
+
                 int delta = node->freq - oldFreq;
                 _curTotalNum += delta;
                 addIntoFreqList(node);

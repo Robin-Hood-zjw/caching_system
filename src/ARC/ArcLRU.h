@@ -28,7 +28,6 @@ class ARC_LRU {
                 value = it->second->getValue();
                 return true;
             }
-            
             return false;
         }
 
@@ -38,8 +37,8 @@ class ARC_LRU {
 
             auto it = _mainCache.find(key);
 
-            return it != _mainCache.end() ? 
-                updateExistingNode(it->second, value) : addNewNode(key, value);
+            return it == _mainCache.end() ? 
+                addNewNode(key, value) : updateExistingNode(it->second, value);
         }
 
         bool checkGhost(Key key) {
@@ -50,7 +49,6 @@ class ARC_LRU {
                 _ghostCache.erase(it);
                 return true;
             }
-
             return false;
         }
 
@@ -66,12 +64,15 @@ class ARC_LRU {
             return true;
         }
     private:
+        std::mutex _mutex;
+
         size_t _capacity;
         size_t _ghostCapacity;
         size_t _transformThreshold;
-        std::mutex _mutex;
+
         node_map _mainCache;
         node_map _ghostCache;
+
         node_ptr _mainHead;
         node_ptr _mainTail;
         node_ptr _ghostHead;
