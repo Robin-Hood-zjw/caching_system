@@ -111,8 +111,76 @@ void testHotDataAccess() {
         }
 
         printResults("热点数据访问测试", CAPACITY, get_operations, hits);
-
     }
+}
+
+void testLoopPattern() {
+    std::cout << "\n=== 测试场景2: 循环扫描测试 ===" << std::endl;
+    
+    const int CAPACITY = 50;          // 缓存容量
+    const int LOOP_SIZE = 500;        // 循环范围大小
+    const int OPERATIONS = 200000;    // 总操作次数
+    
+    CacheSpace::LRU_Cache<int, std::string> lru(CAPACITY);
+    CacheSpace::LFU_Cache<int, std::string> lfu(CAPACITY);
+    CacheSpace::ARC_Cache<int, std::string> arc(CAPACITY);
+    // 为LRU-K设置合适的参数：
+    // - 历史记录容量设为总循环大小的两倍，覆盖范围内和范围外的数据
+    // - k=2，对于循环访问，这是一个合理的阈值
+    CacheSpace::LRU_K_Cache<int, std::string> lruk(CAPACITY, LOOP_SIZE * 2, 2);
+    CacheSpace::LFU_Cache<int, std::string> lfuAging(CAPACITY, 3000);
+
+    std::array<CacheSpace::CachePolicy<int, std::string>*, 5> caches = {&lru, &lfu, &arc, &lruk, &lfuAging};
+    std::vector<int> hits(5, 0);
+    std::vector<int> get_operations(5, 0);
+    std::vector<std::string> names = {"LRU", "LFU", "ARC", "LRU-K", "LFU-Aging"};
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+
+    // 为每种缓存算法运行相同的测试
+    for (int i = 0; i < caches.size(); ++i) {
+        // 先预热一部分数据（只加载20%的数据）
+        for (int key = 0; key < LOOP_SIZE / 5; ++key) {
+            std::string value = "loop" + std::to_string(key);
+            caches[i]->put(key, value);
+        }
+        
+        // 设置循环扫描的当前位置
+        int current_pos = 0;
+        
+        // 交替进行读写操作，模拟真实场景
+        for (int op = 0; op < OPERATIONS; ++op) {
+            // 20%概率是写操作，80%概率是读操作
+            bool isPut = (gen() % 100 < 20);
+            int key;
+            
+            // 按照不同模式选择键
+            if (op % 100 < 60) {  // 60%顺序扫描
+                key = current_pos;
+                current_pos = (current_pos + 1) % LOOP_SIZE;
+            } else if (op % 100 < 90) {  // 30%随机跳跃
+                key = gen() % LOOP_SIZE;
+            } else {  // 10%访问范围外数据
+                key = LOOP_SIZE + (gen() % LOOP_SIZE);
+            }
+            
+            if (isPut) {
+                // 执行put操作，更新数据
+                std::string value = "loop" + std::to_string(key) + "_v" + std::to_string(op % 100);
+                caches[i]->put(key, value);
+            } else {
+                // 执行get操作并记录命中情况
+                std::string result;
+                get_operations[i]++;
+                if (caches[i]->get(key, result)) {
+                    hits[i]++;
+                }
+            }
+        }
+    }
+
+    printResults("循环扫描测试", CAPACITY, get_operations, hits);
 }
 
 int main() {
