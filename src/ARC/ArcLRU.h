@@ -152,6 +152,7 @@ class ARC_LRU {
 
                 lastNode->next = nextNode;
                 nextNode->prev = lastNode;
+                node->prev.reset();
                 node->next = nullptr;
             }
         }
@@ -163,6 +164,7 @@ class ARC_LRU {
 
                 lastNode->next = nextNode;
                 nextNode->prev = lastNode;
+                node->prev.reset();
                 node->next = nullptr;
             }
         }
