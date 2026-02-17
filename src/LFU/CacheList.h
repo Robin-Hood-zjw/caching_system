@@ -3,8 +3,27 @@
 #include <memory>
 
 namespace CacheSpace {
+    template<typename Key, typename Value> class LFU_Cache;
+    
     template<typename Key, typename Value>
     class FreqList {
+        private:
+            struct Node {
+                int freq;
+                Key key;
+                Value value;
+                std::weak_ptr<Node> prev;
+                std::shared_ptr<Node> next;
+
+                Node(): freq(1), next(nullptr) {}
+                Node(Key key, Value val): freq(1), key(key), value(val), next(nullptr) {}
+            };
+            using node_ptr = std::shared_ptr<Node>;
+
+            int _freq;
+            node_ptr _head;
+            node_ptr _tail;
+
         public:
             explicit FreqList(int n) : _freq(n) {
                 _head = std::make_shared<Node>();
@@ -45,22 +64,5 @@ namespace CacheSpace {
             }
 
             friend class LFU_Cache<Key, Value>;
-
-        private:
-            struct Node {
-                int freq;
-                Key key;
-                Value value;
-                std::weak_ptr<Node> prev;
-                std::shared_ptr<Node> next;
-
-                Node(): freq(1), next(nullptr) {}
-                Node(Key key, Value val): freq(1), key(key), value(val), next(nullptr) {}
-            };
-            using node_ptr = std::shared_ptr<Node>;
-
-            int _freq;
-            node_ptr _head;
-            node_ptr _tail;
     };
 }

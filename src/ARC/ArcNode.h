@@ -33,8 +33,8 @@ template<typename Key, typename Value>
                 _accessCnt++;
             }
 
-            template<typename Key, typename Value> friend class ARC_LRU;
-            template<typename Key, typename Value> friend class ARC_LFU;
+            template<typename K, typename V> friend class ARC_LRU;
+            template<typename K, typename V> friend class ARC_LFU;
         private:
             Key _key;
             Value _value;

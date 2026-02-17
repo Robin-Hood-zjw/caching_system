@@ -41,7 +41,7 @@ namespace CacheSpace {
                 auto it = _mainCache.find(key);
 
                 return it == _mainCache.end() ? 
-                    addNewNode(key, node) : updateExistingNode(it->second, value);
+                    addNewNode(key, value) : updateExistingNode(it->second, value);
             }
 
             bool contain(Key key) {

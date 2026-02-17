@@ -3,6 +3,8 @@
 #include <memory>
 
 namespace CacheSpace {
+    template<typename Key, typename Value> class LRU_Cache;
+
     template<typename Key, typename Value>
     class Node {
         public:

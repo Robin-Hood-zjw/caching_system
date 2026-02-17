@@ -1,10 +1,12 @@
 #pragma once
 
 #include "CacheList.h"
-#include "CachePolicy.h"
+#include "../CachePolicy.h"
 
 #include <mutex>
+#include <thread>
 #include <unordered_map>
+
 
 namespace CacheSpace {
     template<typename Key, typename Value>
@@ -140,7 +142,7 @@ namespace CacheSpace {
 
                     int oldFreq = node->freq;
                     int decay = _maxAvgNum / 2;
-                    node->freq = max(1, oldFreq - decay);
+                    node->freq = std::max(1, oldFreq - decay);
 
                     int delta = node->freq - oldFreq;
                     _curTotalNum += delta;
@@ -200,7 +202,7 @@ namespace CacheSpace {
             std::vector<std::unique_ptr<LFU_Cache<Key, Value>>> _slicedCache;
 
             size_t Hash(Key key) {
-                hash<Key> hashFunc;
+                std::hash<Key> hashFunc;
                 return hashFunc(key);
             }
     };

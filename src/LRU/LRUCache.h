@@ -5,6 +5,7 @@
 
 #include <mutex>
 #include <vector>
+#include <thread>
 #include <memory>
 #include <cstring>
 #include <unordered_map>
@@ -127,7 +128,7 @@ namespace CacheSpace {
         public:
             LRU_K_Cache(int capacity, int historyCapacity, int k)
                 : LRU_Cache<Key, Value>(capacity),
-                _pendingLists(std::make_unique<LRU_Cache<Key, size_t>>(countCapacity)),
+                _pendingLists(std::make_unique<LRU_Cache<Key, size_t>>(historyCapacity)),
                 _k(k) {}
 
             Value get(Key key) {
@@ -183,8 +184,8 @@ namespace CacheSpace {
     class Hash_LRU_Cache : public CachePolicy<Key, Value> {
         public:
             Hash_LRU_Cache(size_t capacity, int sliceNum):
-                _sliceNUm(sliceNum > 0 ? sliceNum : std::thread::hardware_concurrency()),
-                _capacity(capacity) {
+                _capacity(capacity),
+                _sliceNum(sliceNum > 0 ? sliceNum : std::thread::hardware_concurrency()) {
                     size_t size = std::ceil(_capacity / static_cast<double>(_sliceNum));
 
                     for (size_t i = 0; i < _sliceNum; i++) {
@@ -215,7 +216,7 @@ namespace CacheSpace {
             std::vector<std::unique_ptr<LRU_Cache<Key, Value>>> _slicedCache;
 
             size_t Hash(Key key) {
-                hash<Key> hashFunc;
+                std::hash<Key> hashFunc;
                 return hashFunc(key);
             }
     };
