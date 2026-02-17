@@ -135,16 +135,15 @@ namespace CacheSpace {
                 Value result;
                 bool inCache = LRU_Cache<Key, Value>::get(key, result);
 
-                size_t pendingCnt = 0;
-                _pendingLists->get(key, pendingCnt);
-                pendingCnt++;
-                _pendingLists->put(key, pendingCnt);
+                size_t historyCount = 0;
+                _pendingLists->get(key, historyCount);
+                historyCount++;
+                _pendingLists->put(key, historyCount);
 
                 if (inCache) return result;
 
-                if (_pendingMap.count(key) && pendingCnt >= _k) {
+                if (_pendingMap.count(key) && historyCount >= _k) {
                     result = _pendingMap[key];
-
                     LRU_Cache<Key, Value>::put(key, result);
                     _pendingLists->remove(key);
                     _pendingMap.erase(key);
@@ -153,19 +152,27 @@ namespace CacheSpace {
                 return result;
             }
 
-            bool get(Key key, Value & value) {
-                bool inCache = LRU_Cache<Key, Value>::get(key, value);
-                if (inCache) return true;
+            bool get(Key key, Value& value) {
+                if (LRU_Cache<Key, Value>::get(key, value)) return true;
 
-                size_t pendingCnt;
-                if (_pendingLists->get(key, pendingCnt)) {
-                    pendingCnt++;
-                    value = _pendingMap[key];
-                    if (pendingCnt >= _k) moveFromPendingToMainCache(key, value);
-                    return true;
+                size_t historyCount = 0;
+                if (_pendingLists->get(key, historyCount)) {
+                    historyCount++;
+                    _pendingLists->put(key, historyCount);
+
+                    if (_pendingMap.count(key) && historyCount >= static_cast<size_t>(_k)) {
+                        value = _pendingMap[key];
+                        LRU_Cache<Key, Value>::put(key, value);
+                        _pendingLists->remove(key);
+                        _pendingMap.erase(key);
+                        return true;
+                    }
+
+                    if (_pendingMap.count(key)) {
+                        value = _pendingMap[key];
+                        return true;
+                    }
                 }
-
-                _pendingMap.erase(key);
                 return false;
             }
 
