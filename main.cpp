@@ -16,8 +16,8 @@ void printResults(
     const std::string& testName, int capacity, 
     const std::vector<int>& get_operations,
     const std::vector<int>& hits) {
-        std::cout << "=== " << testName << " 结果汇总 ===" << std::endl;
-        std::cout << "缓存大小： " << capacity << std::endl;
+        std::cout << "=== " << testName << " Summary of Results ===" << std::endl;
+        std::cout << "Cache size: " << capacity << std::endl;
 
         std::vector<std::string> names;
         if (hits.size() == 3) {
@@ -32,7 +32,7 @@ void printResults(
             double hitRate = 100.0 * hits[i] / get_operations[i];
             std::string starter = i < names.size() ? names[i] : "Algorithm" + std::to_string(i + 1);
 
-            std::cout << starter << " - 命中率: " << std::fixed << std::setprecision(2) << hitRate << std::endl;
+            std::cout << starter << " - Hit Rate: " << std::fixed << std::setprecision(2) << hitRate << std::endl;
             std::cout << "(" << hits[i] << "/" << get_operations[i] << ")" << std::endl;
         }
 
@@ -40,7 +40,7 @@ void printResults(
 }
 
 void testHotDataAccess() {
-    std::cout << "\n=== 测试场景1: 热点数据访问测试 ===" << std::endl;
+    std::cout << "\n=== Test Scenario 1: Hotspot Data Access Test ===" << std::endl;
 
     const int CAPACITY = 20;
     const int OPERATIONS = 500000;
@@ -97,12 +97,12 @@ void testHotDataAccess() {
             }
         }
 
-        printResults("热点数据访问测试", CAPACITY, get_operations, hits);
+        printResults("Hotspot data access test", CAPACITY, get_operations, hits);
     }
 }
 
 void testLoopPattern() {
-    std::cout << "\n=== 测试场景2: 循环扫描测试 ===" << std::endl;
+    std::cout << "\n=== Test Scenario 2: Loop Scan Test ===" << std::endl;
     
     const int CAPACITY = 50;          // 缓存容量
     const int LOOP_SIZE = 500;        // 循环范围大小
@@ -167,11 +167,11 @@ void testLoopPattern() {
         }
     }
 
-    printResults("循环扫描测试", CAPACITY, get_operations, hits);
+    printResults("Cyclic scan test", CAPACITY, get_operations, hits);
 }
 
 void testWorkloadShift() {
-    std::cout << "\n=== 测试场景3: 工作负载剧烈变化测试 ===" << std::endl;
+    std::cout << "\n=== Test Scenario 3: Test of Dramatic Workload Changes ===" << std::endl;
     
     const int CAPACITY = 30;            // 缓存容量
     const int OPERATIONS = 80000;       // 总操作次数
@@ -255,7 +255,7 @@ void testWorkloadShift() {
         }
     }
 
-    printResults("工作负载剧烈变化测试", CAPACITY, get_operations, hits);
+    printResults("Workload drastic change test", CAPACITY, get_operations, hits);
 }
 
 int main() {
