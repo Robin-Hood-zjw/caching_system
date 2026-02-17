@@ -2,26 +2,30 @@
 
 #include <memory>
 
-template<typename Key, typename Value>
-class Node {
-    public:
-        Node(Key k, Value v): _key(k), _val(v), _accessCnt(1) {}
+namespace CacheSpace {
+    template<typename Key, typename Value> class LRU_Cache;
 
-        Key getKey() const { return _key; }
+    template<typename Key, typename Value>
+    class Node {
+        public:
+            Node(Key k, Value v): _key(k), _val(v), _accessCnt(1) {}
 
-        Value getValue() const { return _val; }
+            Key getKey() const { return _key; }
 
-        void setValue(const Value& value) { _val = value; }
+            Value getValue() const { return _val; }
 
-        size_t getAccessCount() const { return _accessCnt; }
+            void setValue(const Value& value) { _val = value; }
 
-        void incrementAccessCount() { ++_accessCnt; }
+            size_t getAccessCount() const { return _accessCnt; }
 
-        friend class LRU_Cache<Key, Value>;
-    private:
-        Key _key;
-        Value _val;
-        size_t _accessCnt;
-        std::weak_ptr<Node<Key, Value>> prev;
-        std::shared_ptr<Node<Key, Value>> next;
-};
+            void incrementAccessCount() { ++_accessCnt; }
+
+            friend class LRU_Cache<Key, Value>;
+        private:
+            Key _key;
+            Value _val;
+            size_t _accessCnt;
+            std::weak_ptr<Node<Key, Value>> prev;
+            std::shared_ptr<Node<Key, Value>> next;
+    };
+}
