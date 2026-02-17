@@ -43,7 +43,7 @@ void printResults(
 
         for (size_t i = 0; i < hits.size(); i++) {
             double hitRate = 100.0 * hits[i] / get_operations[i];
-            string starter = i < names.size() ? names[i] : "Algorithm" + std::to_string(i + 1);
+            std::string starter = i < names.size() ? names[i] : "Algorithm" + std::to_string(i + 1);
 
             std::cout << starter << " - 命中率: " << std::fixed << std::setprecision(2) << hitRate << std::endl;
             std::cout << "(" << hits[i] << "/" << get_operations[i] << ")" << std::endl;

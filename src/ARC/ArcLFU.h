@@ -158,7 +158,7 @@ namespace CacheSpace {
 
                     lastNode->next = nextNode;
                     nextNode->prev = lastNode;
-                    node.prev.reset();
+                    node->prev.reset();
                     node->next = nullptr;
                 }
             }

@@ -124,10 +124,10 @@ namespace CacheSpace {
     };
 
     template<typename Key, typename Value>
-    class LRU_K_Cache : public CachePolicy<Key, Value> {
+    class LRU_K_Cache : public LRU_Cache<Key, Value> {
         public:
-            LRU_K_Cache(int capacity, int historyCapacity, int k)
-                : LRU_Cache<Key, Value>(capacity),
+            LRU_K_Cache(int capacity, int historyCapacity, int k):
+                LRU_Cache<Key, Value>(capacity),
                 _pendingLists(std::make_unique<LRU_Cache<Key, size_t>>(historyCapacity)),
                 _k(k) {}
 
@@ -151,6 +151,22 @@ namespace CacheSpace {
                 }
 
                 return result;
+            }
+
+            bool get(Key key, Value & value) {
+                bool inCache = LRU_Cache<Key, Value>::get(key, value);
+                if (inCache) return true;
+
+                size_t pendingCnt;
+                if (_pendingLists->get(key, pendingCnt)) {
+                    pendingCnt++;
+                    value = _pendingMap[key];
+                    if (pendingCnt >= _k) moveFromPendingToMainCache(key, value);
+                    return true;
+                }
+
+                _pendingMap.erase(key);
+                return false;
             }
 
             void put(Key key, Value value) {
